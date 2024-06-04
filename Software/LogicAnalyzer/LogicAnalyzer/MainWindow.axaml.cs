@@ -39,6 +39,9 @@ namespace LogicAnalyzer
     {
         IAnalizerDriver? driver;
         CaptureSettings settings;
+        WorkspaceSettings workspaceSettings;
+
+        string[]? prefillConnStrs;
 
         ProtocolAnalyzerLoader pLoader;
         public static MainWindow? Instance { get; private set; }
@@ -81,11 +84,15 @@ namespace LogicAnalyzer
             mnuNew.Click += MnuNew_Click;
             mnuOpen.Click += mnuOpen_Click;
             mnuSave.Click += mnuSave_Click;
+            mnuSaveWorkspace.Click += mnuSaveWorkspace_Click;
+            mnuOpenWorkspace.Click += mnuOpenWorkspace_Click;
             mnuExit.Click += MnuExit_Click;
             mnuExport.Click += MnuExport_Click;
             mnuNetSettings.Click += MnuNetSettings_Click;
             mnuDocs.Click += MnuDocs_Click;
             mnuAbout.Click += MnuAbout_Click;
+            this.Closing += Window_OnClosing;
+
             AddHandler(InputElement.KeyDownEvent, MainWindow_KeyDown, handledEventsToo: true);
 
             LoadAnalyzers();
@@ -98,6 +105,11 @@ namespace LogicAnalyzer
                     GetPowerStatus();
                 });
             });
+        }
+
+        private void Window_OnClosing(object? sender, EventArgs e)
+        {
+            if (driver != null) driver.Dispose();
         }
 
         private async void ChannelViewer_ChannelClick(object? sender, ChannelEventArgs e)
@@ -739,7 +751,7 @@ namespace LogicAnalyzer
         }
 
         private void MnuExit_Click(object? sender, RoutedEventArgs e)
-        {
+        {            
             Close();
         }
 
@@ -987,23 +999,33 @@ namespace LogicAnalyzer
                 {
                     if (ddPorts.SelectedItem?.ToString() == "Multidevice")
                     {
-                        MultiConnectDialog dlg = new MultiConnectDialog();
+                        MultiConnectDialog dlg = new MultiConnectDialog(prefillConnStrs);
 
                         if (!await dlg.ShowDialog<bool>(this))
                             return;
 
                         driver = new MultiAnalizerDriver(dlg.ConnectionStrings);
+                        prefillConnStrs = dlg.ConnectionStrings;
                     }
                     else if (ddPorts.SelectedItem?.ToString() == "Network")
                     {
-                        NetworkDialog dlg = new NetworkDialog();
+                        NetworkDialog dlg;
+                        if (prefillConnStrs != null && prefillConnStrs.Length > 0)                       
+                            dlg = new NetworkDialog(prefillConnStrs[0]);                        
+                        else
+                            dlg = new NetworkDialog();
+
                         if (!await dlg.ShowDialog<bool>(this))
                             return;
 
                         driver = new LogicAnalyzerDriver(dlg.Address + ":" + dlg.Port);
+                        prefillConnStrs = new string[] { dlg.Address + ":" + dlg.Port };
                     }
                     else
+                    {
                         driver = new LogicAnalyzerDriver(ddPorts.SelectedItem?.ToString() ?? "");
+                        prefillConnStrs = new string[] { ddPorts.SelectedItem?.ToString() ?? "" };
+                    }                        
 
                     driver.CaptureCompleted += Driver_CaptureCompleted;
                 }
@@ -1030,7 +1052,8 @@ namespace LogicAnalyzer
                 ddPorts.IsEnabled = true;
                 btnRefresh.IsEnabled = true;
                 btnOpenClose.Content = "Open device";
-                RefreshPorts();
+                // Skip this - leave port or dev type selected
+                //RefreshPorts();
                 btnCapture.IsEnabled = false;
                 btnRepeat.IsEnabled = false;
                 mnuSettings.IsEnabled = false;
@@ -1223,6 +1246,69 @@ namespace LogicAnalyzer
                 sampleViewer.EndUpdate();
                 scrSamplePos.Value = sampleViewer.FirstSample;
                 sampleMarker.FirstSample = sampleViewer.FirstSample;
+            }
+        }
+
+        private async void mnuSaveWorkspace_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var sf = new SaveFileDialog();
+                {
+                    workspaceSettings = new WorkspaceSettings();
+                    if(ddPorts.SelectedIndex > -1)
+                    {
+                        workspaceSettings.selectedDeviceTypeStr = ddPorts.SelectedItem.ToString();
+                        workspaceSettings.PrefillConnStrs = prefillConnStrs;
+                    }
+
+                    sf.Filters.Add(new FileDialogFilter { Name = "Logic analyzer workspaces", Extensions = new System.Collections.Generic.List<string> { "law" } });
+                    var file = await sf.ShowAsync(this);
+
+                    if (string.IsNullOrWhiteSpace(file))
+                        return;
+
+                    File.WriteAllText(file, JsonConvert.SerializeObject(workspaceSettings));
+                }
+            }
+            catch (Exception ex)
+            {
+                await this.ShowError("Unhandled exception", $"{ex.Message} - {ex.StackTrace}");
+            }
+
+        }
+
+        private async void mnuOpenWorkspace_Click(object? sender, RoutedEventArgs e)
+        {
+            workspaceSettings = new WorkspaceSettings();
+            try
+            {
+                var sf = new OpenFileDialog();
+                {
+                    sf.Filters.Add(new FileDialogFilter { Name = "Logic analyzer workspaces", Extensions = new System.Collections.Generic.List<string> { "law" } });
+
+                    var file = (await sf.ShowAsync(this))?.FirstOrDefault();
+
+                    if (string.IsNullOrWhiteSpace(file))
+                        return;
+
+                    try
+                    {
+                        workspaceSettings = JsonConvert.DeserializeObject<WorkspaceSettings>(File.ReadAllText(file));
+                    }
+                    catch { }
+
+                    if(workspaceSettings != null && workspaceSettings.selectedDeviceTypeStr != null)
+                    {
+                        ddPorts.SelectedItem = workspaceSettings.selectedDeviceTypeStr;
+                        prefillConnStrs = workspaceSettings.PrefillConnStrs;
+                    }
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                await this.ShowError("Unhandled exception", $"{ex.Message} - {ex.StackTrace}");
             }
         }
 

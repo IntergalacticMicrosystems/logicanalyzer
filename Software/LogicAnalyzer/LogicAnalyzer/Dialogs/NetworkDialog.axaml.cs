@@ -12,14 +12,39 @@ namespace LogicAnalyzer.Dialogs
     public partial class NetworkDialog : Window
     {
         static Regex regAddress = new Regex("([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)");
+        static Regex regAddressPort = new Regex("([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)\\:([0-9]+)");
         public string Address { get; private set; }
         public ushort Port { get; private set; }
+
         public NetworkDialog()
+        {
+            init();
+        }
+
+        public NetworkDialog(string connStr)
+        {
+            init();
+            var match = regAddressPort.Match(connStr);
+
+            if (match != null && match.Success)
+            {
+                txtAddress.Text = match.Groups[1].Value;
+                string port = match.Groups[2].Value;
+
+                ushort devPort;
+                if (ushort.TryParse(port, out devPort))
+                    nudPort.Value = devPort;
+            }
+        }
+
+        private void init()
         {
             InitializeComponent();
             btnAccept.Click += BtnAccept_Click;
             btnCancel.Click += BtnCancel_Click;
 
+            // skip this, we're doing workspace settings instead
+            /*
             var settings = AppSettingsManager.GetSettings<NetworkConnectionSettings>("NetConnection.json");
 
             if (settings != null)
@@ -27,7 +52,9 @@ namespace LogicAnalyzer.Dialogs
                 txtAddress.Text = settings.Address;
                 nudPort.Value = settings.Port;
             }
+            */
         }
+
         protected override void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
@@ -51,7 +78,8 @@ namespace LogicAnalyzer.Dialogs
                 Port = (ushort)nudPort.Value
             };
 
-            AppSettingsManager.PersistSettings("NetConnection.json", settings);
+            // skip this, we're doing workspace settings instead
+            //AppSettingsManager.PersistSettings("NetConnection.json", settings);
             
             this.Address = txtAddress.Text;
             this.Port = (ushort)nudPort.Value;

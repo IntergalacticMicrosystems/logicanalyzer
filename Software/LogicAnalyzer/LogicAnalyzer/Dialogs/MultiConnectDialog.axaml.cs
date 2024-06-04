@@ -14,7 +14,42 @@ namespace LogicAnalyzer.Dialogs
         CheckBox[] cks;
         ComboBox[] dbs;
         TextBlock[] tbs;
+
+        bool preInit = true;
+
+        public MultiConnectDialog(string[]? PrefillConnStrs)
+        {
+            init();
+            if (PrefillConnStrs != null) { 
+                if (tbs.Length >= PrefillConnStrs.Length)
+                {
+                    int i = 0;
+                    foreach (string connStr in PrefillConnStrs)
+                    {
+                        if (i > 0) cks[i - 1].IsChecked = true;
+                        if (connStr.IndexOf(":") != -1)
+                        {
+                            dbs[i].SelectedItem = "Network";
+                            tbs[i].Text = connStr;
+                        }
+                        else
+                        {
+                            dbs[i].SelectedItem = connStr;
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            preInit = false;
+        }
+
         public MultiConnectDialog()
+        {
+            init();
+            preInit = false;
+        }
+
+        private void init()
         {
             InitializeComponent();
             FindControls();
@@ -117,28 +152,31 @@ namespace LogicAnalyzer.Dialogs
 
         private async void Drop_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-            var index = Array.IndexOf(dbs, sender);
-            var value = dbs[index].SelectedItem?.ToString();
-
-            if (value == null)
-                tbs[index].Text = "";
-            else
+            if(preInit == false)
             {
-                if(value == "Network")
-                {
-                    var dlg = new NetworkDialog();
-                    var success = await dlg.ShowDialog<bool>(this);
+                var index = Array.IndexOf(dbs, sender);
+                var value = dbs[index].SelectedItem?.ToString();
 
-                    if (!success)
+                if (value == null)
+                    tbs[index].Text = "";
+                else
+                {
+                    if (value == "Network")
                     {
-                        dbs[index].SelectedItem = null;
-                        tbs[index].Text = "";
+                        var dlg = new NetworkDialog();
+                        var success = await dlg.ShowDialog<bool>(this);
+
+                        if (!success)
+                        {
+                            dbs[index].SelectedItem = null;
+                            tbs[index].Text = "";
+                        }
+                        else
+                            tbs[index].Text = $"{dlg.Address}:{dlg.Port}";
                     }
                     else
-                        tbs[index].Text = $"{dlg.Address}:{dlg.Port}";
+                        tbs[index].Text = "";
                 }
-                else
-                    tbs[index].Text = "";
             }
         }
 

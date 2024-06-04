@@ -14,7 +14,6 @@ namespace SharedDriver
         const int MAJOR_VERSION = 5;
         const int MINOR_VERSION = 1;
 
-
         Regex regVersion = new Regex(".*?(V([0-9]+)_([0-9]+))$");
         Regex regAddressPort = new Regex("([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)\\:([0-9]+)");
         StreamReader readResponse;
@@ -498,15 +497,21 @@ namespace SharedDriver
         {
             try
             {
-                sp.Close();
-                sp.Dispose();
+                if(sp is not null)
+                {
+                    sp.Close();
+                    sp.Dispose();
+                }
             }
             catch { }
 
             try
             {
-                tcpClient.Close();
-                tcpClient.Dispose();
+                if(tcpClient is not null)
+                {
+                    tcpClient.Close();
+                    tcpClient.Dispose();
+                }
 
             } catch { }
 

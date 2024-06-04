@@ -14,8 +14,11 @@
           <MenuItem Header="_New..." Name="mnuNew"/>
           <MenuItem Header="_Open..." Name="mnuOpen"/>
           <MenuItem Header="_Save..." Name="mnuSave" IsEnabled="False"/>
-          <MenuItem Header="E_xport..." Name="mnuExport" IsEnabled="False"/>
+          <MenuItem Header="E_xport..." Name="mnuExport" IsEnabled="False"/>		
           <Separator/>
+			<MenuItem Header="Open Workspace" Name="mnuOpenWorkspace" />
+			<MenuItem Header="Save Workspace" Name="mnuSaveWorkspace" />
+	      <Separator/>
           <MenuItem Header="_Exit" Name="mnuExit"/>
         </MenuItem>
         <MenuItem Header="_Protocol analyzers" Name="mnuProtocols" IsEnabled="False">
